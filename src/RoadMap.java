@@ -10,7 +10,7 @@ public class RoadMap {
 
     private int SCALE, START, END, WIDTH, LENGTH, INITIAL_BUDGET, TOLL, GAIN;
     private ArrayList<ArrayList<Character>> map = new ArrayList<>();
-
+    private Stack<Node> path;
     public RoadMap(String fileName) throws MapException, GraphException {
         openFileInScanner(fileName);
         readValuesAndCreateGraph();
@@ -119,59 +119,73 @@ public class RoadMap {
         return this.INITIAL_BUDGET;
     }
 
-    // TOOD: INCOMPELETE
     public Iterator<Node> findPath(int start, int destination, int initialMoney) throws GraphException {
-        Graph g = getGraph();
-        DfsUtil(g, g.getNode( start ), initialMoney);
 
-        /*// x = nodeName, y = cost to travel to that node
-        Stack<Point> stack = new Stack<>();
-        Stack<Point> path = new Stack<>();
-        stack.push(new Point(start, 0));
+        // Fetch starting node
+        Node startingNode = graph.getNode( start );
+
+        // Global scope to avoid passing on every c
+        path = new Stack<>(); // Always initialize a new stack before finding solution
+
+        // Push starting node to path
+        path.push(startingNode);
+
+        // Recursive DFS call
+        boolean isPath = DfsUtil(startingNode, initialMoney, destination);
+
+        // If path was not found return empty iterator
+        return isPath ? path.iterator() : Collections.emptyIterator();
+    }
 
 
-        while (!stack.isEmpty()) {
-            Point _currentPoint = stack.pop();
-            Node current = g.getNode(_currentPoint.x);
-            if ((initialMoney + _currentPoint.y) >= 0) {
-                if (!current.isVisited()) {
-                    initialMoney += _currentPoint.y;
-                    path.push(_currentPoint);
-                    Iterator<Edge> incidentEdges = g.incidentEdges(current);
+    private boolean DfsUtil(Node node, int money, int destination) throws GraphException {
 
-                    while (incidentEdges.hasNext()) {
-                        Edge e = incidentEdges.next();
-                        Node n = e.secondEndpoint();
-                        if (!n.isVisited() && initialMoney >= 0) {
-                            int cost = switch (e.getType()) {
-                                case ROAD_TYPES.PRIVATE -> -1 * TOLL;
-                                case ROAD_TYPES.REWARD -> GAIN;
-                                default -> 0;
-                            };
 
-                            stack.push(new Point(n.getName(), cost));
-                        }
-                    }
-                }
-                // Mark Visited
-                current.setMark(true);
+        // If node is already visited return false ( false = path not complete/found )
+        if ( node.isVisited() ) return false;
+
+        // If node is destination, return true ( true = valid path is found )
+        if ( node.getName() == destination ) return true;
+
+        // Mark node as visited
+        node.setMark( true );
+
+        // Get list of edges on this node
+        Iterator<Edge> incidentEdges = graph.incidentEdges(node);
+
+        // Iterate through edges
+        while (incidentEdges.hasNext()) {
+            // get edge
+            Edge e = incidentEdges.next();
+
+            // Get destination node of edge, potential node to hop to ( can also be destination )
+            Node n = e.secondEndpoint();
+
+            // Get cost depending on edge type, see Edge:Road_TYPES class
+            int cost = switch (e.getType()) {
+                case ROAD_TYPES.PRIVATE -> -1 * TOLL;
+                case ROAD_TYPES.REWARD -> GAIN;
+                default -> 0;
+            };
+
+            // If node is not visited or does have money to pay the cost ( if any ), then jump to this node;
+            if ( !n.isVisited() && money + cost >= 0 ) {
+
+                // Add it to path (global)
+                path.push(n);
+
+                // Recursive call of next node
+                boolean isPath = DfsUtil(n, money + cost, destination);
+
+                // If path is found return true and keep returning till end of this recursive stack.
+                if ( isPath ) return true;
+
+                // If path is not found then pop that from from path.
+                else path.pop();
             }
         }
 
-        return null;*/
-        return null;
-    }
-
-    // TOOD: INCOMPELETE
-    private boolean DfsUtil(Graph g, Node node, int money) throws GraphException {
-        if ( node.isVisited() ) return false;
-        Iterator<Edge> incidentEdges = g.incidentEdges(node);
-
-        while (incidentEdges.hasNext()) {
-            Edge e = incidentEdges.next();
-            Node n = e.secondEndpoint();
-            boolean isPath = DfsUtil(g, n, money);
-        }
+        // If all edges of nodes are exhausted and no path is found then return false
         return false;
     }
 }
